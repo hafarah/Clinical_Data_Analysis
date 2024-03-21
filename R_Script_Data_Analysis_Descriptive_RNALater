@@ -1,0 +1,166 @@
+# IN THIS SCRIPT, THE DATA IS PRESENTED AS DENSITY PLOTS FOR AGE AND BMI. THEN A SHAPIRO WILK TEST IS RUN FOR NORMALITY. THEN 
+# AN ANOVA IS RUN FOR THE THREE GROUPS WITH ONE VARIABLE CHANGING IN EACH. NAMELY THE BMI AND AGE. THEN A BONFERRONI POST HOC TEST IS RUN FOR MULTIPLE COMPARISONS
+
+# Load necessary libraries
+#install.packages("lsmeans")
+library(lsmeans)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+
+# Read CSV file into a dataframe
+clinicaldf <- read.csv("Clinical_Data.csv")
+
+# Check the structure of the dataframe
+str(clinicaldf)
+
+#This is a script for density plot including all conditions/donors and plotting age
+ggplot(clinicaldf, aes(x = Age)) +
+  geom_density(fill = "blue",alpha = 0.5) +
+  labs(title = "Age of Donors", x = "Age") +
+  theme_minimal() +  # Start with minimal theme
+  theme(  # Customize theme
+    plot.title = element_text(hjust = 0.5),
+    panel.background = element_rect(fill = "white"),  # Set background color
+    panel.grid.major = element_line(color = "black"),  # Change color of major grid lines
+    panel.grid.minor = element_line(color = "grey")   # Change color of minor grid lines
+  )
+
+#This plot is for separating the groups into conditions i.e. T2DM, T1DM, HEALTHY, UNKNOWN and plotting age
+#In this script, a Shapiro-wilk normality distribution test is conducted for each condition. This is then placed onto the plot
+
+
+# Function to perform Shapiro-Wilk test and return p-value
+perform_shapiro_test <- function(data) {
+  shapiro_results <- shapiro.test(data)
+  return(shapiro_results$p.value)
+}
+
+# Perform Shapiro-Wilk test for each condition
+shapiro_results <- clinicaldf %>%
+  group_by(Condition) %>%
+  summarize(p_value = perform_shapiro_test(Age))
+
+# Define custom fill colors for each condition
+custom_fill <- c("HEALTHY" = "blue", "T1DM" = "red", "T2DM" = "green", "UNKNOWN" = "purple")
+
+# Create ggplot with facets
+ggplot(clinicaldf, aes(x = Age, fill = Condition)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Age Distribution by Condition", x = "Age") +
+  theme_minimal() +
+  facet_wrap(~ Condition, scales = "free") +
+  geom_text(data = shapiro_results, aes(label = paste("p-value:", round(p_value, 3))),
+            x = Inf, y = Inf, hjust = 1, vjust = 1, size = 4) +
+  scale_fill_manual(values = custom_fill) +  # Set custom fill colors
+  theme(plot.title = element_text(hjust = 0.5))  # Center the main title
+
+# This script repeats what was previously done but for the variable BMI
+
+
+#This is a script for density plot including all conditions/donors and plotting age
+ggplot(clinicaldf, aes(x = BMI)) +
+  geom_density(fill = "red",alpha = 0.5) +
+  labs(title = "BMI of Donors", x = "BMI") +
+  theme_minimal() +  # Start with minimal theme
+  theme(  # Customize theme
+    plot.title = element_text(hjust = 0.5),
+    panel.background = element_rect(fill = "white"),  # Set background color
+    panel.grid.major = element_line(color = "black"),  # Change color of major gridlines
+    panel.grid.minor = element_line(color = "grey")   # Change color of minor gridlines
+  )
+
+
+# Function to perform Shapiro-Wilk test and return p-value
+perform_shapiro_test <- function(data) {
+  shapiro_results <- shapiro.test(data)
+  return(shapiro_results$p.value)
+}
+
+# Perform Shapiro-Wilk test for each condition
+shapiro_results <- clinicaldf %>%
+  group_by(Condition) %>%
+  summarize(p_value = perform_shapiro_test(BMI))
+
+# Define custom fill colors for each condition
+custom_fill <- c("HEALTHY" = "blue", "T1DM" = "red", "T2DM" = "green", "UNKNOWN" = "purple")
+
+# Create ggplot with facets
+ggplot(clinicaldf, aes(x = BMI, fill = Condition)) +
+  geom_density(alpha = 0.5) +
+  labs(title = "BMI Distribution by Condition", x = "BMI") +
+  theme_minimal() +
+  facet_wrap(~ Condition, scales = "free") +
+  geom_text(data = shapiro_results, aes(label = paste("p-value:", round(p_value, 3))),
+            x = Inf, y = Inf, hjust = 1, vjust = 1, size = 4) +
+  scale_fill_manual(values = custom_fill) +  # Set custom fill colors
+  theme(plot.title = element_text(hjust = 0.5))  # Center the main title
+
+# Install and load the lsmeans package if not already installed
+
+# Perform one-way ANOVA for AGE
+modelAGE <- aov(Age ~ Condition, data = clinicaldf)
+
+# Extract the ANOVA table from the summary
+anova_summary <- summary(modelAGE)
+anova_table_AGE <- as.data.frame(anova_summary[[1]])
+
+# Check the structure of the ANOVA table
+str(anova_table_AGE)
+
+# Save the ANOVA table to a CSV file
+write.csv(anova_table_AGE, "ANOVA_Table_AGE.csv", row.names = FALSE)
+
+# Perform post hoc test with Bonferroni correction
+bonferroni_AGE <- lsmeans(model, pairwise ~ Condition, adjust = "bonferroni")
+# Convert Bonferroni results to data frame
+bonferroni_df_AGE <- as.data.frame(bonferroni_AGE$contrasts)
+bonferroni_df_AGE$y_position <- 1  # Set the y_position for the table
+
+#The table for the analysis should be in environment tab
+# Save bonferroni_df as a CSV file
+write.csv(bonferroni_df_AGE, "bonferroni_results_Age.csv", row.names = FALSE)
+
+# Repeat ANOVA for BMI 
+
+# Perform one-way ANOVA
+modelBMI <- aov(BMI ~ Condition, data = clinicaldf)
+
+# Extract the ANOVA table from the summary
+anova_table_BMI <- as.data.frame(anova_summary[[1]])
+
+# Check the structure of the ANOVA table
+str(anova_table_BMI)
+
+# Save the ANOVA table to a CSV file
+write.csv(anova_table, "ANOVA_Table_BMI.csv", row.names = FALSE)
+
+# Perform post hoc test with Bonferroni correction
+bonferroni_BMI <- lsmeans(model, pairwise ~ Condition, adjust = "bonferroni")
+# Convert Bonferroni results to data frame
+bonferroni_df_BMI <- as.data.frame(bonferroni_BMI$contrasts)
+bonferroni_df_BMI$y_position <- 1  # Set the y_position for the table
+
+#The table for the analysis should be in enviroment tab
+# Save bonferroni_df as a CSV file
+write.csv(bonferroni_df_BMI, "bonferroni_results_BMI.csv", row.names = FALSE)
+
+
+library(dplyr)
+
+# Group by Condition and Ethnicity, and calculate the percentage
+percentage_summary <- clinicaldf %>%
+  group_by(Condition, Ethnicity) %>%
+  summarise(count = n()) %>%
+  group_by(Condition) %>%
+  mutate(Percentage = count / sum(count) * 100)
+
+# Filter for white and non-white individuals
+percentage_summary <- percentage_summary %>%
+  filter(Ethnicity == "WHITE" | Ethnicity != "WHITE")
+
+# Print the summary
+print(percentage_summary)
+
+# Save the dataframe as a CSV file
+write.csv(percentage_summary, "ethnicity_percentage_summary.csv", row.names = FALSE)
